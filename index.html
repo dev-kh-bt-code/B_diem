@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QB_UIT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="icon" type="image/png" href="logo.svg">
+  <style>
+    /* ============================================================
+       BIẾN MÀU SẮC VÀ THIẾT LẬP CHUNG
+       ============================================================ */
+    :root {
+      --card-bg-1: #1b1722;
+      --card-bg-2: #120f17;
+      --card-bg-3: #28252f;
+      --card-bg-4: #2c2d2f;
+
+      --text-primary: #e1e1e2;
+      --text-secondary: #b7b7d3;
+      --text-accent: #feff90;
+      --text-orange: #ff8752;
+      --text-red: #ee6f46;
+
+      /* Gradient thanh progress: vàng bạch kim → cam → đỏ */
+      --progress-gradient: linear-gradient(90deg, #feff90 0%, #ff8752 55%, #ee6f46 100%);
+
+      --border-glow: rgba(255, 255, 255, 0.07);
+      --metallic-shine: rgba(255, 255, 255, 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      background: #090910;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      cursor: none; /* Ẩn con trỏ mặc định, dùng con trỏ custom */
+    }
+
+    /* ============================================================
+       CON TRỎ CUSTOM — HIỆU ỨNG HỐ ĐEN
+       ============================================================ */
+    .custom-cursor {
+      position: fixed;
+      top: 0; left: 0;
+      width: 20px; height: 20px;
+      border: 1.5px solid rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: width 0.2s, height 0.2s, border-color 0.2s;
+      mix-blend-mode: difference;
+    }
+    .custom-cursor.hover {
+      width: 36px; height: 36px;
+      border-color: rgba(255, 220, 100, 0.7);
+    }
+
+    /* ============================================================
+       NỀN VŨ TRỤ — CANVAS
+       ============================================================ */
+    #space-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       WRAPPER CHÍNH
+       ============================================================ */
+    .page-wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    /* ============================================================
+       CARD CHÍNH — HIỆU ỨNG KIM LOẠI + GLASS
+       ============================================================ */
+    .main-card {
+      position: relative;
+      width: 100%;
+      max-width: 1100px;
+
+      /* Nền gradient tối tạo chiều sâu kim loại */
+      background:
+        linear-gradient(135deg, rgba(44,45,47,0.95) 0%, rgba(27,23,34,0.98) 40%, rgba(18,15,23,0.99) 70%, rgba(40,37,47,0.96) 100%);
+
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+
+      /* Ánh kim loại — giả lập bề mặt sơn phản quang */
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.04) inset,
+        0 1px 0 rgba(255,255,255,0.1) inset,
+        0 40px 100px rgba(0,0,0,0.8),
+        0 0 60px rgba(0,0,0,0.5);
+
+      transform-style: preserve-3d;
+      transform-origin: center center;
+      will-change: transform;
+
+      /* Transition mượt cho hiệu ứng 3D */
+      transition: box-shadow 0.1s ease;
+    }
+
+    /* Lớp phủ ánh sáng hover — di chuyển theo con trỏ */
+    .card-light {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      border-radius: 24px;
+      z-index: 0;
+      opacity: 0;
+      background: radial-gradient(circle 400px at 50% 50%, rgba(255,255,255,0.05), transparent 70%);
+      transition: opacity 0.3s ease;
+    }
+    .main-card:hover .card-light {
+      opacity: 1;
+    }
+
+    /* Lớp nội dung bên trong card */
+    .card-inner {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 2rem;
+      padding: 2.5rem;
+    }
+
+    /* ============================================================
+       CỘT TRÁI — AVATAR VÀ THÔNG TIN
+       ============================================================ */
+    .col-left {
+      flex: 0 0 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1rem;
+
+      /* Ngăn cách bằng đường kẻ tinh tế */
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .avatar-wrapper {
+      position: relative;
+      width: 110px; height: 110px;
+    }
+
+    .avatar-ring {
+      position: absolute;
+      inset: -3px;
+      border-radius: 40%;
+      background: conic-gradient(from 0deg, #feff90, #ff8752, #ee6f46, #feff90);
+      animation: spin-ring 6s linear infinite;
+      opacity: 0.6;
+    }
+
+    @keyframes spin-ring {
+      to { transform: rotate(360deg); }
+    }
+
+    .avatar-img {
+      position: relative;
+      width: 110px; height: 110px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #2c2d2f, #1b1722);
+     
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.8rem;
+      color: var(--text-secondary);
+      overflow: hidden;
+    }
+
+    .profile-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+
+    .profile-sub {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      text-align: center;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .badge {
+      margin-top: 0.5rem;
+      padding: 0.3rem 0.9rem;
+      border-radius: 100px;
+      background: rgba(254,255,144,0.1);
+      border: 1px solid rgba(254,255,144,0.2);
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--text-accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ============================================================
+       CỘT PHẢI — LƯỚI ĐIỂM
+       ============================================================ */
+    .col-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* Tiêu đề section */
+    .section-title {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+      opacity: 0.7;
+    }
+
+    /* Hàng điểm */
+    .score-row {
+      display: grid;
+      gap: 0.75rem;
+    }
+    .score-row.vact-row { grid-template-columns: 1fr 1fr; }
+    .score-row.subject-row { grid-template-columns: 1fr 1fr 1fr; }
+
+    /* ============================================================
+       KHUNG ĐIỂM — BLOCK CƠ BẢN
+       ============================================================ */
+    .score-block {
+      background: linear-gradient(135deg, rgba(44,45,47,0.6) 0%, rgba(27,23,34,0.8) 100%);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      padding: 1rem 1.1rem;
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+
+      /* Transition cho hiệu ứng hover 3D */
+      transition: border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    /* Ánh kim loại mỏng phía trên */
+    .score-block::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    }
+
+    .score-block:hover {
+      border-color: rgba(255,255,255,0.14);
+    }
+
+    /* Header của mỗi block: icon + tên môn */
+    .block-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .block-icon {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-accent);
+      flex-shrink: 0;
+    }
+
+    .block-icon i {
+      font-size: 0.8rem;
+    }
+
+    .block-name {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* Hiển thị điểm: số / max */
+    .block-score {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.2rem;
+    }
+
+    .block-score .score-val {
+      /* Màu gradient cho số điểm */
+      background: linear-gradient(135deg, #feff90, #ff8752);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .block-score .score-max {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--text-secondary);
+      opacity: 0.6;
+    }
+
+    .score-empty {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      opacity: 0.45;
+      margin-bottom: 0.5rem;
+    }
+
+    /* ============================================================
+       THANH PROGRESS — GRADIENT VÀNG → CAM → ĐỎ
+       ============================================================ */
+    .progress-wrap {
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 100px;
+      background: var(--progress-gradient);
+      width: 0%; /* Bắt đầu từ 0, JS sẽ animate lên */
+      transition: width 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+      position: relative;
+    }
+
+    /* Ánh sáng chạy trên thanh progress */
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 30px; height: 100%;
+      background: rgba(255,255,255,0.4);
+      filter: blur(4px);
+      border-radius: 100px;
+    }
+
+    /* ============================================================
+       VACT BLOCK MỞ RỘNG — CHỨA 4 MÔN NHỎ
+       ============================================================ */
+    .vact-block {
+      /* Kế thừa score-block, thêm phần sub-grid */
+    }
+
+    .vact-label {
+      font-size: 0.6rem;
+      color: var(--text-secondary);
+      opacity: 0.5;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Grid 2x2 cho 4 môn trong VACT */
+    .vact-subjects {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .vact-sub-item {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 9px;
+      padding: 0.6rem 0.75rem;
+    }
+
+    .vact-sub-name {
+      font-size: 0.6rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+      opacity: 0.7;
+    }
+
+    .vact-sub-score {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 0.35rem;
+    }
+
+    .vact-sub-score .score-val {
+      background: linear-gradient(135deg, #feff90, #ff8752);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .vact-sub-score .score-max {
+      font-size: 0.6rem;
+      color: var(--text-secondary);
+      opacity: 0.5;
+    }
+
+    /* ============================================================
+       KHUNG ĐIỂM TỔNG HỢP — FULL WIDTH, NỔI BẬT HƠN
+       ============================================================ */
+    .total-block {
+      background: linear-gradient(135deg, rgba(44,45,47,0.8) 0%, rgba(18,15,23,0.95) 100%);
+      border: 1px solid rgba(254,255,144,0.12);
+      border-radius: 14px;
+      padding: 1.1rem 1.4rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .total-block::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(254,255,144,0.3), transparent);
+    }
+
+    .total-info {
+      flex: 1;
+    }
+
+    .total-score-display {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .total-score-display .score-val {
+      background: linear-gradient(135deg, #feff90 0%, #ff8752 60%, #ee6f46 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      /* Glow nhẹ cho điểm tổng */
+      filter: drop-shadow(0 0 12px rgba(254,255,144,0.3));
+    }
+
+    .total-score-display .score-max {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      opacity: 0.5;
+    }
+
+    .total-progress-wrap {
+      flex: 1;
+    }
+
+    /* ============================================================
+       RESPONSIVE — MOBILE FIRST
+       ============================================================ */
+    @media (max-width: 768px) {
+      .card-inner {
+        flex-direction: column;
+        padding: 1.5rem 1.25rem;
+        gap: 1.5rem;
+      }
+
+      .col-left {
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        padding-bottom: 1.5rem;
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 1rem;
+      }
+
+      .avatar-wrapper {
+        width: 80px; height: 80px;
+        flex-shrink: 0;
+      }
+      .avatar-img {
+        width: 80px; height: 80px;
+        font-size: 2rem;
+      }
+
+      .col-left-text {
+        text-align: left;
+      }
+
+      .profile-name { text-align: left; }
+      .profile-sub { text-align: left; }
+      .badge { margin-top: 0.25rem; }
+
+      .score-row.vact-row { grid-template-columns: 1fr; }
+      .score-row.subject-row { grid-template-columns: 1fr 1fr; }
+
+      .total-block { flex-direction: column; gap: 0.75rem; }
+    }
+
+    @media (max-width: 420px) {
+      .score-row.subject-row { grid-template-columns: 1fr; }
+    }
+
+    /* ============================================================
+       ANIMATION FADE IN KHI TẢI TRANG
+       ============================================================ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .main-card {
+      animation: fadeUp 0.7s cubic-bezier(0.25, 1, 0.5, 1) both;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Con trỏ custom -->
+  <div class="custom-cursor" id="cursor"></div>
+
+  <!-- Canvas nền vũ trụ -->
+  <canvas id="space-canvas"></canvas>
+
+  <div class="page-wrapper">
+    <div class="main-card" id="main-card">
+      <!-- Lớp ánh sáng hover theo con trỏ -->
+      <div class="card-light" id="card-light"></div>
+
+      <div class="card-inner">
+
+        <!-- ====================================================
+             CỘT TRÁI — THÔNG TIN HỌC SINH
+             ==================================================== -->
+        <div class="col-left">
+          <div class="avatar-wrapper">
+            <div class="avatar-ring"></div>
+            <div class="avatar-img">
+              <!-- Thay bằng thẻ <img src="..."> nếu có ảnh -->
+              <img src="anh9.jpg" alt="uit" style="width: 100%;">
+            </div>
+          </div>
+          <div class="col-left-text">
+            <div class="profile-name">Trần Quang Bình</div>
+            <div class="profile-sub" style="margin-top:0.25rem;">UITer</div>
+            <div class="badge">THPT · VACT</div>
+          </div>
+        </div>
+
+        <!-- ====================================================
+             CỘT PHẢI — LƯỚI ĐIỂM
+             ==================================================== -->
+        <div class="col-right">
+
+          <!-- HÀNG 1: VACT 1 + VACT 2 -->
+          <div class="score-row vact-row">
+
+            <!-- VACT 1 -->
+            <div class="score-block vact-block" id="block-vact1">
+              <div class="block-header">
+                <div class="block-icon" style="font-size:0.8rem; letter-spacing:-0.05em;">V1</div>
+                <div class="block-name">VACT 1</div>
+              </div>
+              <!-- Điểm tổng VACT 1 -->
+              <div class="block-score" id="score-vact1-display">
+                <span class="score-empty">Chưa có</span>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-fill" id="prog-vact1" data-target="0"></div>
+              </div>
+              <!-- 4 môn nhỏ trong VACT 1 -->
+              <div class="vact-subjects" style="margin-top:0.8rem;">
+                <div class="vact-sub-item">
+                  <div class="vact-sub-name">Tiếng Việt</div>
+                  <div class="vact-sub-score" id="score-v1-viet"><span class="score-empty" style="font-size:0.8rem;">—</span></div>
+                  <div class="progress-wrap"><div class="progress-fill" id="prog-v1-viet" data-target="0"></div></div>
+                </div>
+                <div class="vact-sub-item">
+                  <div class="vact-sub-name">Tiếng Anh</div>
+                  <div class="vact-sub-score" id="score-v1-anh"><span class="score-empty" style="font-size:0.8rem;">—</span></div>
+                  <div class="progress-wrap"><div class="progress-fill" id="prog-v1-anh" data-target="0"></div></div>
+                </div>
+                <div class="vact-sub-item">
+                  <div class="vact-sub-name">Toán</div>
+                  <div class="vact-sub-score" id="score-v1-toan"><span class="score-empty" style="font-size:0.8rem;">—</span></div>
+                  <div class="progress-wrap"><div class="progress-fill" id="prog-v1-toan" data-target="0"></div></div>
+                </div>
+                <div class="vact-sub-item">
+                  <div class="vact-sub-name">Tư duy KH</div>
+                  <div class="vact-sub-score" id="score-v1-kh"><span class="score-empty" style="font-size:0.8rem;">—</span></div>
+                  <div class="progress-wrap"><div class="progress-fill" id="prog-v1-kh" data-target="0"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- VACT 2 -->
+            <div class="score-block vact-block" id="block-vact2">
+              <div class="block-header">
+                <div class="block-icon" style="font-size:0.8rem; letter-spacing:-0.05em;">V2</div>
+                <div class="block-name">VACT 2</div>
+              </div>
+              <div class="block-score" id="score-vact2-display">
+                <span class="score-empty">Chưa có</span>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-fill" id="prog-vact2" data-target="0"></div>
+              </div>
+              <div class="vact-subjects" style="margin-top:0.8rem;">
+                <div class="vact-sub-item">
+                  <div class="vact-sub-name">Tiếng Việt</div>
+                  <div class="vact-sub-score" id="score-v2-viet"><span class="score-empty" style="font-size:0.8rem;">—</span></div>
+                  <div class="progress-wrap"><div class="progress-fill" id="prog-v2-viet" data-target="0"></div></div>
+                </div>
+                <div class="vact-sub-item">
+                  <div class="vact-sub-name">Tiếng Anh</div>
+                  <div class="vact-sub-score" id="score-v2-anh"><span class="score-empty" style="font-size:0.8rem;">—</span></div>
+                  <div class="progress-wrap"><div class="progress-fill" id="prog-v2-anh" data-target="0"></div></div>
+                </div>
+                <div class="vact-sub-item">
+                  <div class="vact-sub-name">Toán</div>
+                  <div class="vact-sub-score" id="score-v2-toan"><span class="score-empty" style="font-size:0.8rem;">—</span></div>
+                  <div class="progress-wrap"><div class="progress-fill" id="prog-v2-toan" data-target="0"></div></div>
+                </div>
+                <div class="vact-sub-item">
+                  <div class="vact-sub-name">Tư duy KH</div>
+                  <div class="vact-sub-score" id="score-v2-kh"><span class="score-empty" style="font-size:0.8rem;">—</span></div>
+                  <div class="progress-wrap"><div class="progress-fill" id="prog-v2-kh" data-target="0"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- HÀNG 2: TOÁN, LÝ, HOÁ -->
+          <div class="score-row subject-row">
+
+            <!-- TOÁN -->
+            <div class="score-block">
+              <div class="block-header">
+                <div class="block-icon"><i class="fas fa-ruler-combined"></i></div>
+                <div class="block-name">Toán</div>
+              </div>
+              <div class="block-score" id="score-toan-display">
+                <span class="score-empty">Chưa có</span>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-fill" id="prog-toan" data-target="0"></div>
+              </div>
+            </div>
+
+            <!-- VẬT LÝ -->
+            <div class="score-block">
+              <div class="block-header">
+                <div class="block-icon"><i class="fas fa-atom"></i></div>
+                <div class="block-name">Vật lý</div>
+              </div>
+              <div class="block-score" id="score-ly-display">
+                <span class="score-empty">Chưa có</span>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-fill" id="prog-ly" data-target="0"></div>
+              </div>
+            </div>
+
+            <!-- HOÁ HỌC -->
+            <div class="score-block">
+              <div class="block-header">
+                <div class="block-icon"><i class="fas fa-flask"></i></div>
+                <div class="block-name">Hoá học</div>
+              </div>
+              <div class="block-score" id="score-hoa-display">
+                <span class="score-empty">Chưa có</span>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-fill" id="prog-hoa" data-target="0"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- HÀNG 3: ĐIỂM TỔNG HỢP -->
+          <div class="total-block">
+            <div class="block-icon" style="width:42px;height:42px;border-radius:11px;background:rgba(254,255,144,0.1);border:1px solid rgba(254,255,144,0.2);flex-shrink:0;">
+              <i class="fas fa-graduation-cap" style="color:#feff90;font-size:1rem;"></i>
+            </div>
+            <div class="total-info">
+              <div class="section-title" style="margin-bottom:0.4rem;">Điểm tổng hợp (Quy đổi)</div>
+              <div class="total-score-display" id="score-tong-display">
+                <span class="score-empty" style="font-size:1.1rem;">Chưa có</span>
+              </div>
+            </div>
+            <div class="total-progress-wrap">
+              <div style="font-size:0.6rem;color:var(--text-secondary);opacity:0.5;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.4rem;">Tỉ lệ / 100</div>
+              <div class="progress-wrap" style="height:6px;">
+                <div class="progress-fill" id="prog-tong" data-target="0" style="height:6px;"></div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- end col-right -->
+      </div><!-- end card-inner -->
+    </div><!-- end main-card -->
+  </div>
+
+  <script>
+    /* ============================================================
+       DỮ LIỆU ĐIỂM — NHẬP VÀO ĐÂY
+       Để null nếu chưa có điểm
+       ============================================================ */
+    const scores = {
+      // ---- VACT 1 (max 1200 tổng, mỗi môn max 300) ----
+      vact1: {
+        tong: 914,        // Điểm tổng VACT 1 / 1200
+        viet: 181,        // Tiếng Việt
+        anh: 253,         // Tiếng Anh
+        toan: 262,        // Toán
+        kh: 218,          // Tư duy khoa học
+      },
+
+      // ---- VACT 2 (max 1200 tổng, mỗi môn max 300) ----
+      vact2: {
+        tong: null,
+        viet: null,
+        anh: null,
+        toan: null,
+        kh: null,
+      },
+
+      toan: null,          // Toán / 10
+      ly: null,            // Vật lý / 10
+      hoa: null,           // Hoá học / 10
+      tong: null,          // Điểm tổng hợp quy đổi / 100
+    };
+
+    /* ============================================================
+       HÀM HIỂN THỊ ĐIỂM VÀ ANIMATE THANH PROGRESS
+       ============================================================ */
+
+    /**
+     * Cập nhật một khung điểm đơn giản
+     * @param {string} displayId - ID phần tử hiển thị điểm
+     * @param {string} progId    - ID thanh progress
+     * @param {number|null} val  - Giá trị điểm (null = chưa có)
+     * @param {number} max       - Điểm tối đa
+     */
+    function setScore(displayId, progId, val, max) {
+      const display = document.getElementById(displayId);
+      const prog = document.getElementById(progId);
+      if (!display || !prog) return;
+
+      if (val === null || val === undefined) {
+        display.innerHTML = '<span class="score-empty">Chưa có</span>';
+        prog.style.width = '0%';
+      } else {
+        const pct = Math.min((val / max) * 100, 100);
+        display.innerHTML = `<span class="score-val">${val}</span><span class="score-max"> / ${max}</span>`;
+        // Delay nhỏ để CSS transition chạy đẹp
+        setTimeout(() => { prog.style.width = pct + '%'; }, 100);
+      }
+    }
+
+    /**
+     * Tương tự cho khung VACT con (vact-sub-score nhỏ hơn)
+     */
+    function setSubScore(displayId, progId, val, max) {
+      const display = document.getElementById(displayId);
+      const prog = document.getElementById(progId);
+      if (!display || !prog) return;
+
+      if (val === null || val === undefined) {
+        display.innerHTML = '<span class="score-empty" style="font-size:0.8rem;">—</span>';
+        prog.style.width = '0%';
+      } else {
+        const pct = Math.min((val / max) * 100, 100);
+        display.innerHTML = `<span class="score-val">${val}</span><span class="score-max"> / ${max}</span>`;
+        setTimeout(() => { prog.style.width = pct + '%'; }, 150);
+      }
+    }
+
+    /* Khởi chạy hiển thị điểm */
+    function renderScores() {
+      const s = scores;
+
+      // VACT 1
+      setScore('score-vact1-display', 'prog-vact1', s.vact1.tong, 1200);
+      setSubScore('score-v1-viet', 'prog-v1-viet', s.vact1.viet, 300);
+      setSubScore('score-v1-anh',  'prog-v1-anh',  s.vact1.anh,  300);
+      setSubScore('score-v1-toan', 'prog-v1-toan', s.vact1.toan, 300);
+      setSubScore('score-v1-kh',   'prog-v1-kh',   s.vact1.kh,   300);
+
+      // VACT 2
+      setScore('score-vact2-display', 'prog-vact2', s.vact2.tong, 1200);
+      setSubScore('score-v2-viet', 'prog-v2-viet', s.vact2.viet, 300);
+      setSubScore('score-v2-anh',  'prog-v2-anh',  s.vact2.anh,  300);
+      setSubScore('score-v2-toan', 'prog-v2-toan', s.vact2.toan, 300);
+      setSubScore('score-v2-kh',   'prog-v2-kh',   s.vact2.kh,   300);
+
+      // Toán, Lý, Hoá
+      setScore('score-toan-display', 'prog-toan', s.toan, 10);
+      setScore('score-ly-display',   'prog-ly',   s.ly,   10);
+      setScore('score-hoa-display',  'prog-hoa',  s.hoa,  10);
+
+      // Điểm tổng hợp
+      const tongDisplay = document.getElementById('score-tong-display');
+      const tongProg = document.getElementById('prog-tong');
+      if (s.tong === null) {
+        tongDisplay.innerHTML = '<span class="score-empty" style="font-size:1.1rem;">Chưa có</span>';
+        tongProg.style.width = '0%';
+      } else {
+        const pct = Math.min(s.tong, 100);
+        tongDisplay.innerHTML = `<span class="score-val">${s.tong}</span><span class="score-max"> / 100</span>`;
+        setTimeout(() => { tongProg.style.width = pct + '%'; }, 100);
+      }
+    }
+
+    /* ============================================================
+       NỀN VŨ TRỤ — CANVAS VỚI HIỆU ỨNG GRAVITATIONAL LENSING
+       ============================================================ */
+    const canvas = document.getElementById('space-canvas');
+    const ctx = canvas.getContext('2d');
+    let mouse = { x: -9999, y: -9999 };
+    let stars = [];
+    const STAR_COUNT = 220;
+    const GRAVITY_STRENGTH = 60; // Độ mạnh của hiệu ứng bẻ cong không gian
+    const GRAVITY_RADIUS = 200;  // Bán kính ảnh hưởng
+
+    /* Tạo các ngôi sao ngẫu nhiên */
+    function initStars() {
+      stars = [];
+      for (let i = 0; i < STAR_COUNT; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: Math.random() * 1.4 + 0.2,
+          alpha: Math.random() * 0.7 + 0.2,
+          // Vị trí gốc để tính displacement
+          ox: 0, oy: 0,
+          speed: Math.random() * 0.15 + 0.05, // Tốc độ nhấp nháy nhẹ
+          phase: Math.random() * Math.PI * 2,
+        });
+        stars[i].ox = stars[i].x;
+        stars[i].oy = stars[i].y;
+      }
+    }
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      initStars();
+    }
+
+    /* Vẽ frame vũ trụ */
+    function drawSpace(time) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let s of stars) {
+        // Tính vector từ ngôi sao → con trỏ
+        const dx = mouse.x - s.ox;
+        const dy = mouse.y - s.oy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Dịch chuyển ngôi sao về phía con trỏ (gravitational pull)
+        let nx = s.ox, ny = s.oy;
+        if (dist < GRAVITY_RADIUS && dist > 1) {
+          const force = (1 - dist / GRAVITY_RADIUS) * GRAVITY_STRENGTH;
+          // Hiệu ứng bẻ cong: kéo ngôi sao về phía hố đen
+          nx = s.ox + (dx / dist) * force;
+          ny = s.oy + (dy / dist) * force;
+        }
+
+        // Nhấp nháy nhẹ
+        const twinkle = Math.sin(time * s.speed + s.phase) * 0.2 + 0.8;
+
+        ctx.beginPath();
+        ctx.arc(nx, ny, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${s.alpha * twinkle})`;
+        ctx.fill();
+      }
+
+      requestAnimationFrame(drawSpace);
+    }
+
+    /* ============================================================
+       HIỆU ỨNG 3D PARALLAX CARD — THEO CON TRỎ
+       ============================================================ */
+    const card = document.getElementById('main-card');
+    const cardLight = document.getElementById('card-light');
+    const MAX_TILT = 15; // Độ nghiêng tối đa (°)
+
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+
+      // Tỉ lệ vị trí con trỏ so với tâm card (-1 → 1)
+      const rx = (e.clientY - cy) / (rect.height / 2);
+      const ry = (e.clientX - cx) / (rect.width / 2);
+
+      // Nghiêng card (subtle, mượt)
+      card.style.transform = `
+        perspective(1200px)
+        rotateX(${-rx * MAX_TILT}deg)
+        rotateY(${ry * MAX_TILT}deg)
+        scale3d(1.01, 1.01, 1.01)
+      `;
+
+      // Ánh sáng di chuyển theo con trỏ (giả lập đèn chiếu vào kim loại)
+      const lx = ((e.clientX - rect.left) / rect.width) * 100;
+      const ly = ((e.clientY - rect.top) / rect.height) * 100;
+      cardLight.style.background = `radial-gradient(circle 350px at ${lx}% ${ly}%, rgba(255,255,255,0.06), transparent 70%)`;
+    });
+
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1)';
+    });
+
+    /* ============================================================
+       CON TRỎ CUSTOM
+       ============================================================ */
+    const cursor = document.getElementById('cursor');
+    let cursorX = 0, cursorY = 0;
+    let targetX = 0, targetY = 0;
+
+    document.addEventListener('mousemove', (e) => {
+      targetX = e.clientX;
+      targetY = e.clientY;
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
+
+    /* Animate con trỏ mượt hơn bằng lerp */
+    function animateCursor() {
+      cursorX += (targetX - cursorX) * 0.18;
+      cursorY += (targetY - cursorY) * 0.18;
+      cursor.style.left = cursorX + 'px';
+      cursor.style.top = cursorY + 'px';
+      requestAnimationFrame(animateCursor);
+    }
+
+    // Hover effect cho các block
+    document.querySelectorAll('.score-block, .total-block').forEach(el => {
+      el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+      el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+    });
+
+    /* ============================================================
+       KHỞI ĐỘNG
+       ============================================================ */
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    requestAnimationFrame(drawSpace);
+    animateCursor();
+    renderScores();
+  </script>
+</body>
+</html>
